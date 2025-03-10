@@ -13,6 +13,7 @@
       panel.innerHTML = `
         <div class="temp-mail-paste-header">Auto-completar Registro</div>
         <button id="paste-credentials-button">Pegar Credenciales</button>
+        <button id="paste-verification-button" style="margin-top: 8px; background-color: #28a745;">Pegar Código de Verificación</button>
         <div id="paste-status">Haz clic para pegar tus credenciales</div>
       `;
       
@@ -25,9 +26,12 @@
         document.body.insertBefore(panel, document.body.firstChild);
       }
       
-      // Añadir evento al botón
+      // Añadir eventos a los botones
       const pasteButton = document.getElementById('paste-credentials-button');
       pasteButton.addEventListener('click', pasteCredentials);
+      
+      const verificationButton = document.getElementById('paste-verification-button');
+      verificationButton.addEventListener('click', pasteVerificationCode);
     }
     
     // Función para pegar las credenciales
@@ -37,7 +41,20 @@
       statusElement.className = 'processing';
       
       try {
-        // Leer del portapapeles
+        // Intentar primero desde localStorage
+        const email = localStorage.getItem('pixverse_email');
+        const username = localStorage.getItem('pixverse_username');
+        const password = localStorage.getItem('pixverse_password');
+        
+        if (email && username && password) {
+          // Usar información de localStorage
+          fillFormFields(username, email, password);
+          statusElement.textContent = 'Credenciales pegadas desde localStorage';
+          statusElement.className = 'success';
+          return;
+        }
+        
+        // Si no hay datos en localStorage, intentar desde el portapapeles
         const clipboardText = await navigator.clipboard.readText();
         console.log('Contenido del portapapeles:', clipboardText);
         
@@ -47,14 +64,19 @@
         const passwordMatch = clipboardText.match(/Contraseña: ([^\n]+)/);
         
         if (emailMatch && userMatch && passwordMatch) {
-          const email = emailMatch[1].trim();
-          const username = userMatch[1].trim();
-          const password = passwordMatch[1].trim();
+          const clipEmail = emailMatch[1].trim();
+          const clipUsername = userMatch[1].trim();
+          const clipPassword = passwordMatch[1].trim();
           
-          console.log('Credenciales extraídas:', { email, username, password });
+          console.log('Credenciales extraídas:', { clipEmail, clipUsername, clipPassword });
+          
+          // Guardar en localStorage para uso futuro
+          localStorage.setItem('pixverse_email', clipEmail);
+          localStorage.setItem('pixverse_username', clipUsername);
+          localStorage.setItem('pixverse_password', clipPassword);
           
           // Completar los campos del formulario
-          fillFormFields(username, email, password);
+          fillFormFields(clipUsername, clipEmail, clipPassword);
           
           statusElement.textContent = 'Credenciales pegadas con éxito';
           statusElement.className = 'success';
@@ -66,6 +88,71 @@
         console.error('Error al acceder al portapapeles:', error);
         statusElement.textContent = 'Error: No se pudo acceder al portapapeles';
         statusElement.className = 'error';
+      }
+    }
+    
+    // Función para pegar el código de verificación
+    async function pasteVerificationCode() {
+      const statusElement = document.getElementById('paste-status');
+      statusElement.textContent = 'Pegando código de verificación...';
+      statusElement.className = 'processing';
+      
+      try {
+        // Intentar primero desde localStorage
+        const storedCode = localStorage.getItem('pixverse_verification_code');
+        
+        if (storedCode) {
+          // Usar el código desde localStorage
+          fillVerificationCode(storedCode);
+          statusElement.textContent = 'Código de verificación pegado desde localStorage';
+          statusElement.className = 'success';
+          return;
+        }
+        
+        // Si no hay datos en localStorage, intentar desde el portapapeles
+        const clipboardText = await navigator.clipboard.readText();
+        
+        // Intentar extraer código de verificación
+        const codeMatch = clipboardText.match(/Código: (\d{6})/);
+        
+        // Si no hay un formato "Código: XXXXXX", verificar si es solo un número de 6 dígitos
+        if (codeMatch) {
+          const code = codeMatch[1].trim();
+          fillVerificationCode(code);
+          
+          // Guardar en localStorage
+          localStorage.setItem('pixverse_verification_code', code);
+          
+          statusElement.textContent = 'Código de verificación pegado con éxito';
+          statusElement.className = 'success';
+        } else if (/^\d{6}$/.test(clipboardText.trim())) {
+          // Es solo un número de 6 dígitos
+          const code = clipboardText.trim();
+          fillVerificationCode(code);
+          
+          // Guardar en localStorage
+          localStorage.setItem('pixverse_verification_code', code);
+          
+          statusElement.textContent = 'Código de verificación pegado con éxito';
+          statusElement.className = 'success';
+        } else {
+          statusElement.textContent = 'No se encontró un código de verificación válido';
+          statusElement.className = 'error';
+        }
+      } catch (error) {
+        console.error('Error al acceder al portapapeles:', error);
+        statusElement.textContent = 'Error: No se pudo acceder al portapapeles';
+        statusElement.className = 'error';
+      }
+    }
+    
+    // Función para completar el campo de código de verificación
+    function fillVerificationCode(code) {
+      const codeField = document.getElementById('Code');
+      if (codeField) {
+        codeField.value = code;
+        // Disparar evento de cambio para activar validaciones
+        triggerInputEvent(codeField);
       }
     }
     

@@ -1,5 +1,7 @@
 // content.js
 (function() {
+    let verificationCode = null;
+  
     // Crear el panel de la extensión y añadirlo a la página
     function createPanel() {
       // Verificar si el panel ya existe para evitar duplicados
@@ -29,7 +31,13 @@
           <div id="password-display" class="info-value"></div>
         </div>
         
+        <div class="info-container verification-code-container" style="display: none;">
+          <div class="info-label">Código:</div>
+          <div id="verification-code-display" class="info-value"></div>
+        </div>
+        
         <button id="copy-info-button" disabled>Copiar toda la información</button>
+        <button id="check-verification-button" style="display: none;">Buscar código de verificación</button>
         
         <div id="temp-mail-generator-status">Listo para generar</div>
       `;
@@ -50,6 +58,10 @@
       // Añadir el evento click al botón de copiar
       const copyButton = document.getElementById('copy-info-button');
       copyButton.addEventListener('click', copyAllInfo);
+      
+      // Añadir el evento click al botón de verificación
+      const verificationButton = document.getElementById('check-verification-button');
+      verificationButton.addEventListener('click', checkForVerificationCode);
     }
     
     // Función para obtener el email actual de la página
@@ -69,6 +81,12 @@
       document.getElementById('username-display').textContent = '';
       document.getElementById('password-display').textContent = '';
       document.getElementById('copy-info-button').disabled = true;
+      
+      // Ocultar el campo de código de verificación
+      document.querySelector('.verification-code-container').style.display = 'none';
+      document.getElementById('verification-code-display').textContent = '';
+      document.getElementById('check-verification-button').style.display = 'none';
+      verificationCode = null;
       
       // Hacer clic en el botón borrar para generar un nuevo email
       const deleteButton = document.getElementById('click-to-delete');
@@ -105,6 +123,9 @@
           
           // Actualizar los campos de información
           updateInfoFields(newEmail);
+          
+          // Mostrar el botón de verificación
+          document.getElementById('check-verification-button').style.display = 'block';
         } else if (checkAttempts >= maxAttempts) {
           // Tiempo de espera agotado
           clearInterval(checkInterval);
@@ -133,6 +154,73 @@
       
       // Habilitar el botón de copiar
       document.getElementById('copy-info-button').disabled = false;
+      
+      // Guardar información en localStorage para compartir entre páginas
+      localStorage.setItem('pixverse_email', email);
+      localStorage.setItem('pixverse_username', username);
+      localStorage.setItem('pixverse_password', password);
+    }
+    
+    // Función para buscar y extraer el código de verificación
+    function checkForVerificationCode() {
+      const statusElement = document.getElementById('temp-mail-generator-status');
+      statusElement.textContent = 'Buscando correo de verificación...';
+      statusElement.className = 'generating';
+      
+      // Buscar correos de pixverse
+      const emails = document.querySelectorAll('.inboxSenderEmail');
+      let pixverseEmail = null;
+      
+      for (const email of emails) {
+        if (email.textContent.includes('pixverse.ai')) {
+          pixverseEmail = email;
+          break;
+        }
+      }
+      
+      if (!pixverseEmail) {
+        statusElement.textContent = 'No se encontró correo de verificación. Espera unos segundos y vuelve a intentar.';
+        statusElement.className = 'error';
+        return;
+      }
+      
+      // Hacer clic en el correo de pixverse
+      statusElement.textContent = 'Correo de verificación encontrado. Abriendo...';
+      pixverseEmail.click();
+      
+      // Esperar a que se cargue el contenido del correo
+      setTimeout(() => {
+        // Buscar el código de verificación
+        const paragraphs = document.querySelectorAll('p');
+        let codeElement = null;
+        
+        for (const p of paragraphs) {
+          // Buscar párrafos con estilo de código de verificación (números de 6 dígitos)
+          const text = p.textContent.trim();
+          if (/^\d{6}$/.test(text)) {
+            codeElement = p;
+            break;
+          }
+        }
+        
+        if (codeElement) {
+          // Extraer el código
+          verificationCode = codeElement.textContent.trim();
+          
+          // Mostrar el código
+          document.querySelector('.verification-code-container').style.display = 'flex';
+          document.getElementById('verification-code-display').textContent = verificationCode;
+          
+          // Guardar en localStorage
+          localStorage.setItem('pixverse_verification_code', verificationCode);
+          
+          statusElement.textContent = 'Código de verificación encontrado: ' + verificationCode;
+          statusElement.className = 'success';
+        } else {
+          statusElement.textContent = 'No se pudo encontrar el código de verificación.';
+          statusElement.className = 'error';
+        }
+      }, 2000); // Esperar 2 segundos para que se cargue el contenido del correo
     }
     
     // Función para copiar toda la información
@@ -141,7 +229,12 @@
       const username = document.getElementById('username-display').textContent;
       const password = document.getElementById('password-display').textContent;
       
-      const infoText = `Email: ${email}\nUsuario: ${username}\nContraseña: ${password}`;
+      let infoText = `Email: ${email}\nUsuario: ${username}\nContraseña: ${password}`;
+      
+      // Añadir código de verificación si existe
+      if (verificationCode) {
+        infoText += `\nCódigo: ${verificationCode}`;
+      }
       
       navigator.clipboard.writeText(infoText)
         .then(() => {
@@ -178,6 +271,9 @@
                 const statusElement = document.getElementById('temp-mail-generator-status');
                 statusElement.textContent = 'Email detectado automáticamente';
                 statusElement.className = 'success';
+                
+                // Mostrar el botón de verificación
+                document.getElementById('check-verification-button').style.display = 'block';
               }
             }
           }
@@ -200,6 +296,9 @@
           if (currentDisplayedEmail !== newEmail) {
             console.log('Email detectado en listener:', newEmail);
             updateInfoFields(newEmail);
+            
+            // Mostrar el botón de verificación
+            document.getElementById('check-verification-button').style.display = 'block';
           }
         }
       });
@@ -214,6 +313,9 @@
           if (currentDisplayedEmail !== newEmail) {
             console.log('Email detectado en intervalo:', newEmail);
             updateInfoFields(newEmail);
+            
+            // Mostrar el botón de verificación
+            document.getElementById('check-verification-button').style.display = 'block';
           }
         }
       }, 1000);
@@ -230,6 +332,15 @@
       if (currentEmail && currentEmail !== 'Cargando' && currentEmail.includes('@')) {
         updateInfoFields(currentEmail);
         document.getElementById('copy-info-button').disabled = false;
+        document.getElementById('check-verification-button').style.display = 'block';
+      }
+      
+      // Verificar si ya tenemos un código guardado
+      const savedCode = localStorage.getItem('pixverse_verification_code');
+      if (savedCode) {
+        verificationCode = savedCode;
+        document.querySelector('.verification-code-container').style.display = 'flex';
+        document.getElementById('verification-code-display').textContent = verificationCode;
       }
     }
     

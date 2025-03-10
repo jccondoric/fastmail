@@ -33,6 +33,23 @@
     background-color: #3367d6;
   }
   
+  #check-verification-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+    margin-bottom: 12px;
+    width: 100%;
+  }
+  
+  #check-verification-button:hover {
+    background-color: #218838;
+  }
+  
   .info-container {
     display: flex;
     margin-bottom: 8px;
