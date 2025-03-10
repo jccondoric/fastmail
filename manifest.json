@@ -1,0 +1,14 @@
+{
+    "manifest_version": 3,
+    "name": "Temp Mail Generator",
+    "version": "1.0",
+    "description": "Genera emails temporales automáticamente desde temp-mail.org",
+    "permissions": ["activeTab", "scripting", "clipboardWrite"],
+    "content_scripts": [
+      {
+        "matches": ["*://temp-mail.org/*"],
+        "js": ["content.js"],
+        "css": ["styles.css"]
+      }
+    ]
+  }
