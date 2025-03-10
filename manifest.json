@@ -3,12 +3,17 @@
     "name": "Temp Mail Generator",
     "version": "1.0",
     "description": "Genera emails temporales automáticamente desde temp-mail.org",
-    "permissions": ["activeTab", "scripting", "clipboardWrite"],
+    "permissions": ["activeTab", "scripting", "clipboardWrite", "clipboardRead", "storage"],
     "content_scripts": [
       {
         "matches": ["*://temp-mail.org/*"],
         "js": ["content.js"],
         "css": ["styles.css"]
+      },
+      {
+        "matches": ["*://app.pixverse.ai/register*"],
+        "js": ["pixverse.js"],
+        "css": ["pixverse-styles.css"]
       }
     ]
   }
